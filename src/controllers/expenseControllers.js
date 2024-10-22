@@ -4,16 +4,16 @@ const { filterTransactionDetails } = require("../utils/constants");
 const addTransaction = async (req, res) => {
   try {
     const { type, category, amount, description } = req.body;
+
     if (!type || !category || !amount || !description) {
       return res
         .status(400)
         .send({ status: false, message: "Please fill in all fields" });
     }
-
-    const res = await TransactionModel.create({
+    const response = await TransactionModel.create({
       type,
       category,
-      date,
+      date: Date.now(),
       amount,
       description,
     });
@@ -21,6 +21,7 @@ const addTransaction = async (req, res) => {
     res.status(201).send({
       status: true,
       message: "Transaction added successfully",
+      data: filterTransactionDetails(response),
     });
   } catch (error) {
     res.status(400).send({
@@ -32,7 +33,9 @@ const addTransaction = async (req, res) => {
 
 const getAllTransactions = async (req, res) => {
   try {
-    const transactions = await TransactionModel.find().sort({ date: -1 });
+    const transactions = await TransactionModel.find()
+      .sort({ date: -1 })
+      .populate("category");
     const filterData = transactions.map((each) =>
       filterTransactionDetails(each)
     );
@@ -52,6 +55,11 @@ const getAllTransactions = async (req, res) => {
 const getTransactionDetails = async (req, res) => {
   try {
     const id = req.params.id;
+    if (!id) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Please provide transaction id" });
+    }
     const findTransaction = await TransactionModel.findOne({
       _id: id,
     });
@@ -77,6 +85,11 @@ const getTransactionDetails = async (req, res) => {
 const updateTransaction = async (req, res) => {
   try {
     const id = req.params.id;
+    if (!id) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Please provide transaction id" });
+    }
     const updateData = req.body;
     if (Object.keys(updateData).length === 0) {
       return res
@@ -91,13 +104,14 @@ const updateTransaction = async (req, res) => {
         .status(404)
         .send({ status: false, message: "Transaction not found" });
     }
-    await TransactionModel.findByIdAndUpdate(id, updateData, {
+    const details = await TransactionModel.findByIdAndUpdate(id, updateData, {
       new: true,
     });
 
     res.status(200).send({
       status: true,
       message: "Transaction updated successfully",
+      data: details,
     });
   } catch (error) {
     res.status(400).send({
@@ -110,6 +124,11 @@ const updateTransaction = async (req, res) => {
 const deleteTransaction = async (req, res) => {
   try {
     const id = req.params.id;
+    if (!id) {
+      return res
+        .status(400)
+        .send({ status: false, message: "Please provide transaction id" });
+    }
     const findTransaction = await TransactionModel.findOne({
       _id: id,
     });
@@ -118,12 +137,13 @@ const deleteTransaction = async (req, res) => {
         .status(404)
         .send({ status: false, message: "Transaction not found" });
     }
-    await TransactionModel.findByIdAndDelete(_id);
+    await TransactionModel.findByIdAndDelete(id);
     res.status(200).send({
       status: true,
       message: "Transaction Deleted Successfully",
     });
   } catch (error) {
+    console.log(error.message);
     res.status(400).send({
       status: false,
       message: "Something went wrong",
@@ -156,6 +176,7 @@ const getTransactionSummary = async (req, res) => {
     const expenses = transactions
       .filter((each) => each.type === "expense")
       .reduce((total, current) => total + current.amount, 0);
+
     const balance = expenses - income;
 
     const filterTransactions = transactions.map((each) =>

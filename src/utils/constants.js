@@ -7,6 +7,7 @@ const filterTransactionDetails = (transaction) => {
     description: transaction.description,
     amount: transaction.amount,
     type: transaction.type,
+    category: transaction.category,
   };
 };
 
